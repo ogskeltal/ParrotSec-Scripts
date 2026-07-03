@@ -2,9 +2,9 @@
 #
 # anonymize.sh
 #
-# Quick identity hygiene for a Parrot box: randomize interface MAC addresses,
-# spoof the hostname, and optionally route traffic through Tor via anonsurf.
-# Original values are saved so everything can be restored.
+# Randomize interface MAC addresses, spoof the hostname, and optionally route
+# traffic through Tor via anonsurf. Original values are saved so everything can
+# be restored.
 #
 # Usage:
 #   sudo ./anonymize.sh on             # randomize MACs + spoof hostname + start anonsurf

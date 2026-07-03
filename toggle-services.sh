@@ -2,9 +2,9 @@
 #
 # toggle-services.sh
 #
-# Start/stop/enable/disable the services commonly needed for pentest work on
-# Parrot, so they aren't left running at boot. Wraps systemctl with a curated
-# default set and a clean status view.
+# Start/stop/enable/disable the services often needed for pentest work on
+# Parrot, so they aren't left running at boot. Wraps systemctl with a default
+# service set and a status view.
 #
 # Usage:
 #   ./toggle-services.sh status                  # show state of the default set (no root)
