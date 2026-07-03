@@ -397,6 +397,109 @@ Input is one URL or host per line; bare hosts are tried over http. The
 dedicated tools write their own report; the Chromium fallback builds an
 `index.html` gallery. Exits `1` if the fallback captured nothing.
 
+### `loot-parser.sh`
+
+Sweeps a directory for secrets: private keys, cloud credentials, tokens,
+connection strings, password assignments, and interesting file names. Read-only;
+writes a findings report.
+
+```bash
+./loot-parser.sh ~/engagements/acme/loot
+./loot-parser.sh ./loot --out findings.txt
+./loot-parser.sh ./loot --quiet          # report to file only
+```
+
+Regex-based, so expect false positives; the report is a triage starting point,
+not a verdict. Pairs with `workspace.sh` (point it at the `loot/` dir).
+
+### `linpeas-fetch.sh`
+
+Downloads the current privilege-escalation binaries (linpeas, winpeas, pspy)
+from their GitHub releases into a directory, optionally serving them over HTTP.
+
+```bash
+./linpeas-fetch.sh                    # into ./privesc-tools
+./linpeas-fetch.sh --dir ~/tools
+./linpeas-fetch.sh --serve            # download, then http.server on 8000
+```
+
+Always pulls the latest release, so what you hand a target isn't stale. Verifies
+each file is non-empty and marks scripts/pspy executable. Exits `1` if any
+download fails.
+
+### `hashgrab.sh`
+
+Pulls hashes out of common dump formats (impacket secretsdump, `/etc/shadow`,
+Kerberos AS-REP/TGS) and sorts them into per-type files ready for `crack.sh`,
+printing the hashcat mode for each.
+
+```bash
+./hashgrab.sh secretsdump.txt --out ./hashes
+secretsdump.py ... | ./hashgrab.sh -
+```
+
+Recognizes NTLM (`-m 1000`), NetNTLMv2 (`5600`), Kerberos AS-REP (`18200`) /
+TGS (`13100`), and Unix crypt schemes (md5crypt/sha256crypt/sha512crypt/bcrypt).
+Each output file is printed with the exact `crack.sh` command to run next.
+
+### `ntlm-relay-setup.sh`
+
+Prepares an NTLM relay: backs up `Responder.conf`, turns off Responder's own
+SMB/HTTP (required so ntlmrelayx can bind them), and prints the exact
+`responder` and `ntlmrelayx` commands for two terminals. Can launch one.
+`--restore` puts the config back.
+
+```bash
+sudo ./ntlm-relay-setup.sh --iface eth0 --targets targets.txt
+sudo ./ntlm-relay-setup.sh --iface eth0 --targets targets.txt --launch relay
+sudo ./ntlm-relay-setup.sh --restore
+```
+
+Relaying only works against hosts where SMB signing is *not* required; build the
+targets file with `nmap --script smb2-security-mode -p445 <subnet>` or
+crackmapexec. Needs `responder` and impacket's ntlmrelayx.
+
+### `port-monitor.sh`
+
+Re-scans a target on an interval and reports when open ports change since the
+last scan. Useful on long engagements to catch services that come and go.
+
+```bash
+./port-monitor.sh 10.10.10.10                 # every 5 min until Ctrl-C
+./port-monitor.sh target.tld --interval 900
+./port-monitor.sh target.tld --once           # single scan
+./port-monitor.sh target.tld --ports 1-1000
+```
+
+Stores the last open-port set and a `changes.log` in a per-target state dir,
+and prints `OPENED`/`CLOSED` deltas each cycle.
+
+### `web-tech.sh`
+
+Deep fingerprint of one web target: HTTP headers, technology detection
+(`whatweb`/`wappalyzer`), TLS certificate, and robots/sitemap. Writes and prints
+a report; skips steps whose tool is missing.
+
+```bash
+./web-tech.sh https://example.com
+./web-tech.sh example.com --out ./example-fingerprint.txt
+```
+
+### `notes-timestamp.sh`
+
+Appends timestamped entries to an engagement notes file: a plain note, or a
+command plus its captured output. Turns `notes.md` into a running worklog.
+
+```bash
+./notes-timestamp.sh "found anonymous FTP on 10.0.0.5"
+./notes-timestamp.sh --run "nmap -sV 10.0.0.5"       # logs command + output
+./notes-timestamp.sh --file ~/eng/acme/notes/notes.md --run "id"
+```
+
+The notes file defaults to `$NOTES`, then `./notes/notes.md`, then `./notes.md`,
+so inside a `workspace.sh` layout it just works. `--run` exits with the wrapped
+command's exit code.
+
 ## License
 
 See [LICENSE](LICENSE).
