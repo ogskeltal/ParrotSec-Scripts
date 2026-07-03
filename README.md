@@ -346,6 +346,57 @@ cross-source view.
 > PoC code is untrusted third-party code and may be malicious. Read it before
 > running, ideally in a throwaway VM.
 
+### `revshell.sh`
+
+Prints reverse-shell one-liners for a given LHOST/LPORT, optionally URL-encoded,
+and can start the matching listener. A local stand-in for revshells.com.
+
+```bash
+./revshell.sh -i tun0 -p 4444              # resolve LHOST from an interface
+./revshell.sh -i 10.10.14.5 -p 4444 --type python
+./revshell.sh -i tun0 -p 4444 --url-encode
+./revshell.sh -i tun0 -p 4444 --listen     # start an nc/rlwrap listener
+```
+
+LHOST accepts an IP or an interface name (resolved to its IPv4). Types: bash,
+sh, nc, python, php, perl, ruby, powershell, socat, msfvenom. `--url-encode`
+adds an encoded copy of each payload; `--listen` execs `nc`/`ncat` (wrapped in
+`rlwrap` if present).
+
+### `serve.sh`
+
+Stands up a quick file-transfer server (HTTP, SMB, or FTP) and prints matching
+download one-liners (`wget`, `curl`, `certutil`, PowerShell, `smbclient`) for
+the target.
+
+```bash
+./serve.sh                              # HTTP on 8000, serving the current dir
+./serve.sh --dir /tmp/loot --port 80
+./serve.sh --type smb --dir /tmp/loot   # impacket SMB share
+./serve.sh --type ftp --dir /tmp/loot   # anonymous FTP (pyftpdlib)
+./serve.sh --print-only                 # print commands, don't start a server
+```
+
+Host in the printed commands comes from `--lhost` (IP or interface), or is
+auto-detected. HTTP uses `updog` if present, else `python3 -m http.server`. SMB
+needs `impacket-smbserver`; FTP needs `pyftpdlib`.
+
+### `screenshot-web.sh`
+
+Screenshots a list of web hosts into a folder, using whichever tool is present
+(EyeWitness, gowitness, aquatone) and falling back to headless Chromium with a
+generated HTML gallery. Pairs with `subdomain-enum.sh` output.
+
+```bash
+./screenshot-web.sh live-hosts.txt
+./screenshot-web.sh urls.txt --out ~/engagements/acme/shots
+./screenshot-web.sh urls.txt --dry-run
+```
+
+Input is one URL or host per line; bare hosts are tried over http. The
+dedicated tools write their own report; the Chromium fallback builds an
+`index.html` gallery. Exits `1` if the fallback captured nothing.
+
 ## License
 
 See [LICENSE](LICENSE).
