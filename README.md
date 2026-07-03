@@ -135,6 +135,96 @@ sudo ./anonymize.sh on --mac-only  # MAC randomization only
 - `on` saves the true originals only once, so a second `on` won't overwrite them
   with already-spoofed values. `off` restores and clears the saved state.
 
+### `wordlists-setup.sh`
+
+Populates a wordlists directory. Unpacks the system `rockyou.txt` if present,
+then clones well-known wordlist repos from GitHub. Existing clones are updated
+with `git pull` instead of re-cloned, so re-running is cheap.
+
+The default directory is `/usr/share/wordlists` when writable (needs root),
+otherwise `~/wordlists`. Override with `--dir`.
+
+**Usage**
+
+```bash
+# Unpack rockyou + clone the core repos
+./wordlists-setup.sh
+
+# Also clone the very large repos (Probable-Wordlists, assetnote)
+./wordlists-setup.sh --large
+
+# Install into a custom directory
+./wordlists-setup.sh --dir ~/wl
+
+# Show the repo set and exit
+./wordlists-setup.sh --list
+```
+
+Core repos (cloned by default): SecLists, PayloadsAllTheThings, fuzzdb,
+kkrypt0nn/wordlists, fuzz.txt, wpa2-wordlists. The large set (`--large`) adds
+Probable-Wordlists and assetnote, which are tens of GB. Clones use
+`--depth 1`. Exits `1` if any repo fails; re-run to retry.
+
+### `vpn-killswitch.sh`
+
+Fail-closed firewall around a VPN. When on, all traffic is dropped except
+loopback, established connections, and traffic through the VPN interface, so a
+dropped tunnel can't leak your real IP. IPv6 is blocked entirely. The current
+iptables rules are backed up on `on` and restored on `off`.
+
+**Usage**
+
+```bash
+# Turn on (tun0 assumed). Do this AFTER the VPN is connected.
+sudo ./vpn-killswitch.sh on
+
+# WireGuard, or allow a fresh tunnel to establish while active
+sudo ./vpn-killswitch.sh on --iface wg0
+sudo ./vpn-killswitch.sh on --server 203.0.113.5 --port 1194 --proto udp
+
+# Restore the previous rules
+sudo ./vpn-killswitch.sh off
+
+# Check state
+./vpn-killswitch.sh status
+```
+
+**Options:** `--iface` (VPN interface, default `tun0`), `--server` / `--port` /
+`--proto` (permit the handshake to the VPN endpoint on the physical link,
+needed to bring up a new tunnel while the killswitch is active), `--dry-run`.
+
+**Notes**
+
+- Turn it on after the VPN is up. Without `--server`, an already-connected
+  tunnel keeps working but a new one may be blocked.
+- `on` refuses to run if a killswitch is already active, so it can't overwrite
+  the saved backup. Run `off` first.
+- Restoring depends on the backup under `/var/lib/parrot-scripts/`. If that is
+  lost, reset your firewall manually.
+
+### `workspace.sh`
+
+Scaffolds an engagement directory: a dated folder with the usual subdirs
+(`recon/`, `scans/`, `exploits/`, `loot/`, `report/`, `notes/`) plus a
+`notes.md` template and a `scope.txt`.
+
+**Usage**
+
+```bash
+# Creates ./acme-corp_YYYY-MM-DD/
+./workspace.sh acme-corp
+
+# Under a chosen base, without the date suffix
+./workspace.sh acme --base ~/engagements --no-date
+
+# Populate an existing directory
+./workspace.sh acme --force
+```
+
+The target name is slugified into a safe directory name. Existing `scope.txt`,
+`notes.md`, and `README.md` are never overwritten, even with `--force`, so your
+notes are safe on a re-run. No root needed.
+
 ## License
 
 See [LICENSE](LICENSE).
