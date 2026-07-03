@@ -656,6 +656,220 @@ Read-only, no root. Reads the state the other scripts leave behind.
 
 `--exit-ip` reaches out to an external service, so it's off by default.
 
+### `hosts-manager.sh`
+
+Add and remove target vhosts in `/etc/hosts`, tagged per engagement so you can
+clear them all at once. Backs up `/etc/hosts` before each change.
+
+```bash
+sudo ./hosts-manager.sh add 10.10.10.5 dc01.corp.local corp.local --tag htb
+sudo ./hosts-manager.sh remove dc01.corp.local
+sudo ./hosts-manager.sh clear-tag htb
+./hosts-manager.sh list                       # no root
+```
+
+### `shell-upgrade.sh`
+
+Prints the sequence to turn a raw reverse shell into a full interactive PTY,
+with your current terminal size filled in. Nothing runs against a target; it
+just outputs the commands to paste in order.
+
+```bash
+./shell-upgrade.sh                 # detect rows/cols from this terminal
+./shell-upgrade.sh --rows 50 --cols 200
+```
+
+### `vhost-fuzz.sh`
+
+Finds virtual hosts by fuzzing the Host header with ffuf. Auto-measures the
+baseline size for a bogus vhost and filters it, so only vhosts that differ show
+up. Feeds `hosts-manager.sh`.
+
+```bash
+./vhost-fuzz.sh 10.10.10.5 corp.local
+./vhost-fuzz.sh 10.10.10.5 corp.local -w subdomains.txt --scheme https
+./vhost-fuzz.sh 10.10.10.5 corp.local --out vhosts.txt
+```
+
+### `net-discover.sh`
+
+Finds live hosts on a local network: an ARP sweep (arp-scan/netdiscover) where
+possible, falling back to an nmap ping sweep, plus reverse-DNS names. Writes a
+live-hosts file for `recon-quick.sh`.
+
+```bash
+sudo ./net-discover.sh 10.0.0.0/24
+sudo ./net-discover.sh 10.0.0.0/24 --iface eth0 --out live.txt
+```
+
+### `snmp-enum.sh`
+
+Finds a working SNMP community string (brute a short list with onesixtyone or
+snmpwalk), then walks the useful branches: system, users, processes, installed
+software, listening ports, routes.
+
+```bash
+./snmp-enum.sh 10.0.0.5
+./snmp-enum.sh 10.0.0.5 -c public --out ./snmp
+./snmp-enum.sh 10.0.0.5 -C communities.txt
+```
+
+### `jwt-tool.sh`
+
+Decodes a JWT, flags common weaknesses (`alg:none`, HMAC, alg-confusion), and
+tries to crack an HS256 secret against a wordlist. Self-contained; decoding and
+the HMAC check use base64/openssl locally.
+
+```bash
+./jwt-tool.sh <token>
+./jwt-tool.sh <token> --wordlist /usr/share/wordlists/rockyou.txt
+echo "$TOKEN" | ./jwt-tool.sh -
+```
+
+### `param-hunt.sh`
+
+Discovers URL parameters with whichever of gau, waybackurls, paramspider, and
+arjun are installed, merges them, and can run a light nuclei pass over the
+collected URLs.
+
+```bash
+./param-hunt.sh https://example.com
+./param-hunt.sh example.com --out ./params
+./param-hunt.sh example.com --nuclei
+```
+
+Writes `urls-with-params.txt` and `param-names.txt`, ready to feed `sqlmap -m`.
+
+### `tls-scan.sh`
+
+Grades a host's TLS: protocols, ciphers, certificate and expiry, plus known
+issues. Uses testssl.sh or sslscan when present, otherwise a focused openssl
+fallback that still catches deprecated protocols and cert problems.
+
+```bash
+./tls-scan.sh example.com
+./tls-scan.sh example.com:8443 --out ./tls
+```
+
+### `wifi-capture.sh`
+
+Captures WPA handshakes / PMKID on an authorized wireless engagement into a file
+ready for `crack.sh` (`-m 22000`). Prefers hcxdumptool, falls back to
+airodump-ng, and restores the adapter to managed mode on exit.
+
+```bash
+sudo ./wifi-capture.sh --iface wlan0                 # PMKID sweep
+sudo ./wifi-capture.sh --iface wlan0 --bssid AA:BB.. --channel 6
+```
+
+Only run against networks you are authorized to test.
+
+### `pass-analyze.sh`
+
+Stats on a list of cracked passwords to guide the next cracking pass: length
+distribution, top base words, character-set makeup, and the top hashcat masks. A
+small pipal.
+
+```bash
+./pass-analyze.sh cracked.txt
+./pass-analyze.sh cracked.txt --top 20
+hashcat -m 1000 hashes --show | cut -d: -f2 | ./pass-analyze.sh -
+```
+
+### `secret-scan.sh`
+
+Scans looted source for secrets with trufflehog or gitleaks, including full git
+history when the target is a repo. Deeper than `loot-parser.sh`'s flat regex
+sweep.
+
+```bash
+./secret-scan.sh /path/to/repo
+./secret-scan.sh /path/to/dir --out findings.json
+./secret-scan.sh https://github.com/org/repo
+```
+
+### `cvss.sh`
+
+CVSS 3.1 base-score calculator. Give it a vector and it prints the score and
+severity, and can append a finding row to a `report-gen.sh` table.
+
+```bash
+./cvss.sh AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H
+./cvss.sh CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H --title "RCE" --host 10.0.0.5 --append report/report.md
+```
+
+### `evidence.sh`
+
+Files a screenshot or output file as evidence: copies it into `report/evidence/`
+with a timestamped sequential name and a caption, and maintains an `index.md` so
+figures are report-ready.
+
+```bash
+./evidence.sh shot.png "admin panel with default creds"
+./evidence.sh --workspace ~/eng/acme nmap.txt "full port scan"
+./evidence.sh --list
+```
+
+### `update-parrot.sh`
+
+Full-system update: `apt update`, `full-upgrade`, then `parrot-upgrade` if
+present, autoremove/autoclean, and a reboot-required check. Retries the network
+steps because Parrot mirrors drop connections.
+
+```bash
+sudo ./update-parrot.sh
+sudo ./update-parrot.sh --no-parrot-upgrade   # apt only
+./update-parrot.sh --dry-run
+```
+
+### `fastest-mirror.sh`
+
+Times the Parrot mirrors in your config and ranks them fastest first. With
+`--apply` it points your apt source at the fastest, backing up the file it
+changes. Reads your existing mirror list; it doesn't pull one from elsewhere.
+
+```bash
+./fastest-mirror.sh                 # benchmark and rank, no changes
+sudo ./fastest-mirror.sh --apply    # switch apt to the fastest
+```
+
+### `healthcheck.sh`
+
+One-screen health of the local box: disk, memory, load, failed systemd units,
+pending updates, kernel/reboot status, and whether the opsec scripts are active.
+Read-only, no root.
+
+```bash
+./healthcheck.sh
+```
+
+### `cleanup-parrot.sh`
+
+Reclaims disk: apt cache, orphaned packages, old kernels, journal logs,
+thumbnail cache, and trash, with a before/after free-space summary. Preview with
+`--dry-run`.
+
+```bash
+./cleanup-parrot.sh --dry-run
+sudo ./cleanup-parrot.sh
+sudo ./cleanup-parrot.sh --journal 200M --keep-kernels 2
+```
+
+### `dotfiles-sync.sh`
+
+Backs up and restores tool configs and dotfiles so a fresh Parrot install is a
+quick restore away. Optionally keeps history in a git repo.
+
+```bash
+./dotfiles-sync.sh backup                    # into ./dotfiles-backup
+./dotfiles-sync.sh backup --dir ~/dotfiles --git
+./dotfiles-sync.sh restore --dir ~/dotfiles
+./dotfiles-sync.sh list
+```
+
+Some backed-up files hold secrets (API keys, msf db creds). Keep the backup
+private; don't push it to a public repo.
+
 ## License
 
 See [LICENSE](LICENSE).
