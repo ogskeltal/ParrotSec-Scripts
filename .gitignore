@@ -1,0 +1,8 @@
+# Local Claude Code guidance — not part of the published repo
+CLAUDE.md
+
+# Editor / OS cruft
+*.swp
+*~
+.DS_Store
+Thumbs.db
