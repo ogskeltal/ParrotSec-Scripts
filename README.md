@@ -226,6 +226,94 @@ The target name is slugified into a safe directory name. Existing `scope.txt`,
 `notes.md`, and `README.md` are never overwritten, even with `--force`, so your
 notes are safe on a re-run. No root needed.
 
+### `tool-doctor.sh`
+
+Checks that the common pentest toolchain is present and runnable, grouped by
+purpose (recon, web, exploit, creds, net, runtime), and flags what's missing
+with the apt package to install. Read-only, no root. Exits `1` if anything in
+the checked set is missing, so other scripts can gate on it.
+
+```bash
+./tool-doctor.sh              # full report
+./tool-doctor.sh --missing    # only what's missing
+./tool-doctor.sh --quiet      # summary + exit code only
+```
+
+### `recon-quick.sh`
+
+First-pass recon against a single host. Runs an `nmap` service scan, finds the
+web ports, then fingerprints each (`whatweb`/`httpx`) and brute-forces content
+(`feroxbuster`/`ffuf`/`gobuster`) plus a `nuclei` pass. Output lands in a dated
+directory. Tools that aren't installed are skipped.
+
+```bash
+./recon-quick.sh 10.10.10.10
+./recon-quick.sh target.tld --out ~/engagements/target
+./recon-quick.sh target.tld --wordlist /usr/share/wordlists/dirb/common.txt
+./recon-quick.sh target.tld --dry-run
+```
+
+Pairs with `workspace.sh` (use its `recon/` dir as `--out`) and
+`wordlists-setup.sh` (for the content-discovery list). Needs `nmap`; everything
+else is optional.
+
+### `subdomain-enum.sh`
+
+Passive subdomain enumeration. Runs whichever of `subfinder`, `assetfinder`,
+and `amass` are installed, merges and dedupes, then resolves and probes with
+`httpx` (or `dnsx`) to find live hosts.
+
+```bash
+./subdomain-enum.sh example.com
+./subdomain-enum.sh example.com --out ~/engagements/example
+./subdomain-enum.sh example.com --active     # add amass active enumeration
+```
+
+Writes `all-subs.txt` and `live-hosts.txt` to the output directory. Needs at
+least one of subfinder/assetfinder/amass. `--active` does noisier, direct
+enumeration; leave it off for passive-only.
+
+### `crack.sh`
+
+Wrapper around `hashcat`. Identifies the hash type (`hashid` /
+`hashcat --identify`), picks a wordlist, and runs a dictionary attack with an
+optional rules pass.
+
+```bash
+./crack.sh hashes.txt                 # identify, then crack with rockyou
+./crack.sh hashes.txt --type 1000     # force mode (NTLM)
+./crack.sh hashes.txt --rules best64  # add a rules pass
+./crack.sh hashes.txt --identify      # show candidate modes, exit
+```
+
+Defaults to `rockyou.txt` from the standard locations (unpack it with
+`wordlists-setup.sh`; gzipped lists are refused). If it can't identify the hash
+unambiguously it prints candidates and asks for `--type`. On a partial crack it
+suggests a larger list or a rules pass.
+
+### `panic-wipe.sh`
+
+**Destructive.** Securely removes engagement data and clears traces. Nothing
+happens without an explicit action flag *and* a typed `WIPE` confirmation.
+Always `--dry-run` first.
+
+```bash
+# Preview (touches nothing)
+./panic-wipe.sh --loot ~/engagements/acme_2026-07-03 --dry-run
+
+# Shred a loot dir, clear shell/tool history, clear clipboard
+./panic-wipe.sh --loot ~/engagements/acme_2026-07-03 --history --clipboard
+
+# Everything, including dropping kernel caches (needs root)
+sudo ./panic-wipe.sh --all --loot ~/engagements/acme_2026-07-03
+```
+
+**Actions:** `--loot DIR` (shred then remove), `--history` (shell + tool
+history), `--clipboard`, `--caches` (root), `--all`. Guards refuse protected and
+shallow paths, but they are advisory; the typed confirmation is the real
+backstop. `--yes` skips the prompt for scripted use, which removes that
+backstop, so use it deliberately.
+
 ## License
 
 See [LICENSE](LICENSE).
