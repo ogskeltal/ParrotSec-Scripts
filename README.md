@@ -500,6 +500,87 @@ The notes file defaults to `$NOTES`, then `./notes/notes.md`, then `./notes.md`,
 so inside a `workspace.sh` layout it just works. `--run` exits with the wrapped
 command's exit code.
 
+### `ad-enum.sh`
+
+One-shot Active Directory recon against a domain controller. Runs whichever of
+netexec/crackmapexec, enum4linux-ng, ldapdomaindump, and bloodhound-python are
+installed, saving each tool's output. Works unauthenticated (null session) or
+with credentials.
+
+```bash
+./ad-enum.sh 10.10.10.10 -d corp.local
+./ad-enum.sh 10.10.10.10 -d corp.local -u jdoe -p 'Passw0rd!'
+./ad-enum.sh 10.10.10.10 -d corp.local -u jdoe -H <nthash>
+```
+
+Null-session runs get SMB shares/users/password-policy; credentialed runs add
+logged-on users, sessions, ldapdomaindump, and a full BloodHound collection.
+Output lands in a dated directory. `-H` uses an NT hash instead of a password.
+
+### `pivot.sh`
+
+Brings up a SOCKS pivot with chisel or ligolo-ng, writes a matching proxychains
+config (kept out of `/etc`, so no root), and prints the command to run on the
+remote agent. `down` tears it back down.
+
+```bash
+./pivot.sh chisel --port 8080 --socks 1080   # reverse SOCKS via chisel
+./pivot.sh ligolo --socks 1080               # ligolo-ng proxy
+./pivot.sh proxychains 1080                   # just (re)write the config
+./pivot.sh status
+./pivot.sh down
+```
+
+Then run tools through it with `proxychains4 -f <state>/proxychains.conf <cmd>`.
+The state dir defaults to `~/.local/share/parrot-pivot` (override with
+`$PIVOT_STATE`). Needs `chisel` or ligolo's `ligolo-proxy` on the local side.
+
+### `creds-vault.sh`
+
+Append-only credential log for an engagement: host, service, user, secret, and
+source as tab-separated rows, with list/search/count.
+
+```bash
+./creds-vault.sh add --host 10.0.0.5 --service smb --user admin --secret 'P@ss' --source secretsdump
+./creds-vault.sh list
+./creds-vault.sh search admin
+./creds-vault.sh count
+```
+
+Not encrypted; it's a structured scratchpad. Keep it in the engagement dir and
+shred it when done (`panic-wipe.sh --loot`). The file defaults to
+`$CREDS_VAULT`, then `./creds/vault.tsv`.
+
+### `nmap-parse.sh`
+
+Turns nmap XML (`-oX`/`-oA`) into a clean host/port/service table, a
+targets-by-service breakdown, and a plain `host:port` list for feeding other
+tools. Uses python3 for reliable parsing, with an awk fallback.
+
+```bash
+./nmap-parse.sh scan.xml
+./nmap-parse.sh scan.xml --out ./parsed
+nmap -sV -oX - target | ./nmap-parse.sh -
+```
+
+With `--out` it writes `ports.tsv`, `host-ports.txt`, and `by-service.txt` --
+the last two feed straight into `screenshot-web.sh`, `recon-quick.sh`, etc.
+
+### `report-gen.sh`
+
+Stitches a `workspace.sh` engagement directory into a single Markdown draft:
+scope, running notes, an index of scan/web/loot artifacts, inlined nmap output,
+and an empty findings table. Optionally renders HTML with pandoc.
+
+```bash
+./report-gen.sh ~/engagements/acme_2026-07-03
+./report-gen.sh ./acme --out acme-report.md
+./report-gen.sh ./acme --html            # also report.html (needs pandoc)
+```
+
+A starting point for the write-up, not a finished report. Defaults the output to
+`<workspace>/report/report.md`.
+
 ## License
 
 See [LICENSE](LICENSE).
