@@ -161,9 +161,10 @@ otherwise `~/wordlists`. Override with `--dir`.
 ```
 
 Core repos (cloned by default): SecLists, PayloadsAllTheThings, fuzzdb,
-kkrypt0nn/wordlists, fuzz.txt, wpa2-wordlists. The large set (`--large`) adds
-Probable-Wordlists and assetnote, which are tens of GB. Clones use
-`--depth 1`. Exits `1` if any repo fails; re-run to retry.
+kkrypt0nn/wordlists, fuzz.txt, wpa2-wordlists, statistically-likely-usernames,
+OneListForAll, and xajkep/wordlists. The large set (`--large`) adds
+trickest/wordlists, Probable-Wordlists, and assetnote. Clones use `--depth 1`.
+Run `--list` to see the full set. Exits `1` if any repo fails; re-run to retry.
 
 ### `vpn-killswitch.sh`
 

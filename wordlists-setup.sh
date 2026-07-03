@@ -27,6 +27,10 @@ REPOS=(
   "kkrypt0nn-wordlists|https://github.com/kkrypt0nn/wordlists.git|core|General discovery/enumeration wordlists"
   "fuzz.txt|https://github.com/Bo0oM/fuzz.txt.git|core|Potentially dangerous file/path list for content discovery"
   "wpa2-wordlists|https://github.com/kennyn510/wpa2-wordlists.git|core|WPA2 handshake cracking dictionaries"
+  "statistically-likely-usernames|https://github.com/insidetrust/statistically-likely-usernames.git|core|Username lists for user enumeration and spraying"
+  "OneListForAll|https://github.com/six2dez/OneListForAll.git|core|Merged web fuzzing list (rockyou for web)"
+  "xajkep-wordlists|https://github.com/xajkep/wordlists.git|core|Discovery, dictionaries, and payload lists"
+  "trickest-wordlists|https://github.com/trickest/wordlists.git|large|Real-world recon lists: tech paths, robots, cloud/subdomains"
   "Probable-Wordlists|https://github.com/berzerk0/Probable-Wordlists.git|large|Passwords sorted by real-world probability (very large)"
   "assetnote-wordlists|https://github.com/assetnote/wordlists.git|large|Monthly content/subdomain discovery lists (very large)"
 )
