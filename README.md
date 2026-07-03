@@ -314,6 +314,38 @@ shallow paths, but they are advisory; the typed confirmation is the real
 backstop. `--yes` skips the prompt for scripted use, which removes that
 backstop, so use it deliberately.
 
+### `cve-poc.sh`
+
+Aggregates CVE proof-of-concept sources and looks a CVE up across all of them at
+once. Parrot already ships Exploit-DB (`searchsploit`), Metasploit modules, and
+nuclei templates locally; this adds the two large CVE-to-GitHub PoC indexes
+(`nomi-sec/PoC-in-GitHub`, `trickest/cve`) on top and cross-references
+everything.
+
+```bash
+# Install/update all local sources (Exploit-DB, the PoC indexes, nuclei templates)
+./cve-poc.sh sync
+
+# Look a CVE up across Exploit-DB, GitHub PoCs, nuclei, and Metasploit
+./cve-poc.sh CVE-2021-44228
+
+# Use a custom data directory
+./cve-poc.sh --dir ~/cve sync
+```
+
+Data lives in `/usr/share/cve-poc` (root) or `~/cve-poc`, override with `--dir`.
+Index repos are cloned `--depth 1` and updated with `git pull` on re-sync.
+Lookup exits `1` if no source has a hit. `jq` is used to parse the GitHub PoC
+JSON when present, with a grep fallback.
+
+Exploit-DB on its own is available directly through Parrot's `searchsploit`
+(`searchsploit --cve 2021-44228`, `searchsploit -m <id>` to copy a PoC). This
+script is only worth it for the extra GitHub-sourced PoCs and the single
+cross-source view.
+
+> PoC code is untrusted third-party code and may be malicious. Read it before
+> running, ideally in a throwaway VM.
+
 ## License
 
 See [LICENSE](LICENSE).
