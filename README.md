@@ -870,6 +870,141 @@ quick restore away. Optionally keeps history in a git repo.
 Some backed-up files hold secrets (API keys, msf db creds). Keep the backup
 private; don't push it to a public repo.
 
+### `kerberoast.sh`
+
+Kerberoasting and AS-REP roasting with impacket. Requests service tickets for
+SPN accounts (needs creds) and/or grabs AS-REP hashes for accounts with pre-auth
+disabled (needs only a user list). Output is written in hashcat format for
+`crack.sh`.
+
+```bash
+./kerberoast.sh 10.0.0.1 -d corp.local -u jdoe -p 'Passw0rd!'   # roast SPNs
+./kerberoast.sh 10.0.0.1 -d corp.local -u jdoe -H <nthash> --out ./roast
+./kerberoast.sh 10.0.0.1 -d corp.local -U users.txt --asrep     # AS-REP, no creds
+```
+
+Prints the exact `crack.sh` command per output (`-m 13100` for TGS, `-m 18200`
+for AS-REP). Chains `ad-enum.sh`/`kerbrute-users.sh` -> here -> `crack.sh`.
+
+### `vuln-map.sh`
+
+Maps discovered services to candidate exploits. Given nmap XML or a `ports.tsv`
+from `nmap-parse.sh`, it queries searchsploit per service/version into a per-host
+list of leads.
+
+```bash
+./vuln-map.sh scan.xml
+./vuln-map.sh parsed/ports.tsv --out ./vulnmap
+nmap -sV -oX - target | ./vuln-map.sh -
+```
+
+For nmap XML it uses `searchsploit --nmap` directly. Leads only; verify versions
+and read the exploit before running anything.
+
+### `cewl-wordlist.sh`
+
+Builds a target-specific wordlist: scrapes the site with cewl, optionally folds
+in a names list, then expands with a hashcat rules pass (or a built-in
+season/year/suffix mutation when hashcat isn't available).
+
+```bash
+./cewl-wordlist.sh https://example.com -o custom.txt
+./cewl-wordlist.sh https://example.com --depth 2 --min 5 --rules best64
+./cewl-wordlist.sh https://example.com --names employees.txt
+```
+
+Output feeds `spray.sh -P` and `crack.sh --wordlist`.
+
+### `checksec-scan.sh`
+
+Runs checksec across a file or directory of binaries and tables the protections
+(RELRO, canary, NX, PIE, Fortify), flagging the soft ones. For triaging a
+pwn/RE target.
+
+```bash
+./checksec-scan.sh /usr/bin/some-binary
+./checksec-scan.sh ./bins --out checksec.txt
+```
+
+### `docker-enum.sh`
+
+Local container / escape recon: whether you're in a container, whether the
+Docker socket is reachable and writable, privileged flags, dangerous
+capabilities, host mounts, and docker-group membership. Read-only; prints the
+escape command for any path it finds.
+
+```bash
+./docker-enum.sh
+```
+
+### `catch.sh`
+
+Multi-shell catcher. Opens a listener per port in its own tmux window and logs
+each shell to a file, so several callbacks can land at once. Falls back to a
+single foreground listener without tmux. The receiving end for `revshell.sh` /
+`payload-gen.sh`.
+
+```bash
+./catch.sh 4444
+./catch.sh 4444 4445 9001 --session hydra --log ~/eng/acme/loot
+./catch.sh --attach hydra
+```
+
+### `osint-harvest.sh`
+
+Passive OSINT for a domain via theHarvester: emails, subdomains, and hosts,
+deduped into files for `spray.sh` (usernames) and `subdomain-enum.sh`.
+
+```bash
+./osint-harvest.sh example.com
+./osint-harvest.sh example.com --out ~/eng/osint
+./osint-harvest.sh example.com --sources bing,crtsh,duckduckgo
+```
+
+Authorized targets only.
+
+### `cloud-enum.sh`
+
+Probes for public cloud storage tied to a keyword: S3 buckets, Azure blob
+containers, and GCS. Generates candidate names with common affixes and reports
+which exist and which allow anonymous listing.
+
+```bash
+./cloud-enum.sh acme
+./cloud-enum.sh acme --out ./cloud
+./cloud-enum.sh acme --affixes affixes.txt
+```
+
+Uses `cloud_enum` if installed, otherwise a built-in curl probe. This reaches
+external cloud endpoints, so run it only against authorized scope.
+
+### `certipy-adcs.sh`
+
+Checks AD Certificate Services for ESC1-ESC8 misconfigurations with certipy and
+prints the exploit command for anything flagged vulnerable. Needs domain
+credentials.
+
+```bash
+./certipy-adcs.sh 10.0.0.1 -d corp.local -u jdoe -p 'Passw0rd!'
+./certipy-adcs.sh 10.0.0.1 -d corp.local -u jdoe -H <nthash> --out ./adcs
+```
+
+### `retest-tracker.sh`
+
+Tracks findings across retests in a small CSV: id, title, severity, host,
+status, and last-updated. Add findings, flip status on a retest, list by status,
+and emit a Markdown table for `report-gen.sh`.
+
+```bash
+./retest-tracker.sh add --id F1 --title "SQLi in login" --severity High --host 10.0.0.5
+./retest-tracker.sh set F1 fixed
+./retest-tracker.sh list --status open
+./retest-tracker.sh report            # Markdown table
+```
+
+Status values: open, fixed, needs-retest, accepted-risk. File defaults to
+`$FINDINGS_CSV`, then `./report/findings.csv`.
+
 ## License
 
 See [LICENSE](LICENSE).
